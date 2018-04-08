@@ -1,0 +1,11 @@
+[Dd]ebug*/
+[Rr]elease*/
+*.sln
+*.suo
+*.txt
+*.vcxproj
+*.vcxproj.*
+*.sh
+*.VC.db
+*Eigen/
+include/
