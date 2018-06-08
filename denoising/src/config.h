@@ -8,9 +8,9 @@
 #define STRIDE_SIZE 3
 
 #define CONFIG_L 64
-#define CONFIG_S 20
+#define CONFIG_S 18
 #define CONFIG_K 40
-#define CONFIG_L_S 44 //CONFIG_L - CONFIG_S;
+#define CONFIG_L_S 46 //CONFIG_L - CONFIG_S;
 
 const int CONFIG_SCALING = 1 << CONFIG_S;
 

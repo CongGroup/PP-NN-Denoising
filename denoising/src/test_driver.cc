@@ -71,6 +71,7 @@ void test_vector()
  	}
 
  	ab = shareAB[0] + shareAB[1];
+    mod_2exp(ab, CONFIG_L);
 
  	printf("%f\n%f\n\n", rawA*rawB, ab.get_d()/CONFIG_SCALING/CONFIG_SCALING);
  }
@@ -134,7 +135,7 @@ void test_secure_mul_pw()
 	// run protocol
 	secure_muliplication(A.share, B.share, tri.share,
      						U, V, AB.share, 1);
-
+    secure_rescale(AB.share[0], AB.share[1]);
 	AB.decrypt();
 
 	// report results
@@ -147,7 +148,7 @@ void test_secure_mul_pw()
 
 	printf("\nSecured:\n");
 	for (int i = 0; i<AB.plain.size(); ++i)
-		std::cout << AB.plain(i).get_d() / CONFIG_SCALING / CONFIG_SCALING << std::endl;
+		std::cout << AB.plain(i).get_d() / CONFIG_SCALING << std::endl;
 
 	printf("\n");
 }
@@ -155,24 +156,24 @@ void test_secure_mul_pw()
  void test_tanh()
  {
  	printf("========%s=========\n", __func__);
- 	double n=-2.5;
+ 	double n=2.6;
  	printf("n : %f\n", n);
 
  	if(n >= 0) {
  		if(n <= 1.52)
- 			printf("plaintext: %f\n", -0.2716*n*n+1*n+0.016);
+ 			printf("plaintext: t1 %f\n", -0.2716*n*n+1*n+0.016);
  		else if(n <= 2.57)
- 			printf("plaintext: %f\n", -0.0848*n*n+0.42654*n+0.4519);
+ 			printf("plaintext: t2 %f\n", -0.0848*n*n+0.42654*n+0.4519);
  		else
- 			printf("plaintext: %f\n", 1.0);
+ 			printf("plaintext: 1 %f\n", 1.0);
  	}
  	else {
  		if(-1.52 <= n)
- 			printf("plaintext: %f\n", 0.2716*n*n+1*n-0.016);
+ 			printf("plaintext: t3 %f\n", 0.2716*n*n+1*n-0.016);
  		else if(-2.57 <= n)
- 			printf("plaintext: %f\n", 0.0848*n*n+0.42654*n-0.4519);
+ 			printf("plaintext: t4 %f\n", 0.0848*n*n+0.42654*n-0.4519);
  		else
- 			printf("plaintext: %f\n", -1.0);
+ 			printf("plaintext: -1 %f\n", -1.0);
  	}
 
 	ss_tuple_z O(2, 1), N(1, 1), N2(1, 1), U(1, 1), V(1, 1);
@@ -189,16 +190,16 @@ void test_secure_mul_pw()
  	secure_muliplication(N.share, N.share, tri.share, 
  						 U, V, 
  						 N2.share, 1);
-
- 	secure_rescale(N2.share[0], N2.share[1]);
-
+    secure_rescale(N2.share[0], N2.share[1]);
 	N2.decrypt();
- 	//std::cout << "x^2 " << N2.plain(0).get_d() / CONFIG_SCALING << std::endl;
+ 	//std::cout << "x: " << N.plain(0).get_d() / CONFIG_SCALING << " x^2: " << N2.plain(0).get_d() / CONFIG_SCALING << std::endl;
 
  	// generating four candidate polynomials
  	tanh_polynomials(N.share, N2.share, 
  					 T[0].share, T[1].share, 
  					 T[2].share, T[3].share);
+    for (int i = 0; i < 4; ++i)
+        secure_rescale(T[i].share[0], T[i].share[1]);
 
  	// simulate the computation undertaken by GC
  	gc_simulate(N,
@@ -206,8 +207,8 @@ void test_secure_mul_pw()
  				O);
 
 	O.decrypt();
+    matrix_neg_recover(O.plain);
 
- 	//printf("secured: %f\n", mpz_get_d(O.plain.data[0])/CONFIG_SCALING);
  	printf("secured: %f\n", O.plain(0).get_d()/CONFIG_SCALING);
  	printf("\n");
  }
@@ -289,5 +290,5 @@ void test_suit()
 	test_tanh();
 	test_rescale();
     //test_denoise_patch();
-    test_denoise_image();
+    //test_denoise_image();
 }

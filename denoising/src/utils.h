@@ -75,18 +75,30 @@ inline matrix_d& matrix_z2d(const matrix_z &in, matrix_d &out)
     return out;
 }
 
-#include <fstream>
+//#include <fstream>
 extern std::ofstream den_log;
 extern mpz_class MOD_RING, MOD_HALFRING;
-inline void matrix_neg_recover(matrix_z& mat)
+
+//#include <iostream>
+inline void ring_neg_recover(mpz_class &v)
+{
+    if (v >= MOD_HALFRING) {
+        //std::cout << "neg recover before " << v << std::endl;
+        v -= MOD_RING;
+        //std::cout << "neg recover after " << v << std::endl;
+    }
+}
+
+inline void matrix_neg_recover (matrix_z& mat)
 {
     mpz_class *data = mat.data();
     for (int i = 0, size = mat.size(); i < size; ++i)
-        if (*data >= MOD_HALFRING) { 
-            *data -= MOD_RING;
-            //std::cout << "neg value found: " << *data << std::endl;
-            den_log << "neg value found: " << *data << std::endl;
-        }
+        //if (*(data + i) >= MOD_HALFRING) {
+        //    *(data + i) -= MOD_RING;
+        //    //std::cout << "neg value found: " << *data << std::endl;
+        //    //den_log << "neg value found: " << *(data + i) << std::endl;
+        //}
+        ring_neg_recover(*(data + i));
 }
 
 #endif

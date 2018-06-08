@@ -11,7 +11,7 @@
 extern gmp_randclass gmp_prn;
 	
 // some useful constants
-mpz_class MOD_S(1u << CONFIG_S), MOD_HALFRING(1ul << (CONFIG_L-1)), MOD_RING(MOD_HALFRING*2);
+mpz_class MOD_HALFRING(1ul << (CONFIG_L-1)), MOD_RING(MOD_HALFRING*2);
 mpz_class MPZ_SCALED_ONE(CONFIG_SCALING), MPZ_SCALED_NEG_ONE(-CONFIG_SCALING);
 
 // main model						
@@ -59,11 +59,12 @@ void buf_init(nn_buffer_t *buf)
     }
 }
 
-
 void tanh_init()
 {
 	TANH_PARAM.n1 = -0.2716*CONFIG_SCALING;
+    mod_2exp(TANH_PARAM.n1, CONFIG_L);
 	TANH_PARAM.n2 = -0.0848*CONFIG_SCALING;
+    mod_2exp(TANH_PARAM.n2, CONFIG_L);
 	TANH_PARAM.c1 = 1 * CONFIG_SCALING;
 	TANH_PARAM.c2 = 0.42654*CONFIG_SCALING;
 	TANH_PARAM.d1 = 0.016*CONFIG_SCALING;
@@ -84,6 +85,8 @@ void denoise_init()
 	nn_init();
     buf_init(buffers);
 	tanh_init();
+
+    mod_2exp(MPZ_SCALED_NEG_ONE, CONFIG_L);
 }
 
 //void denoise_reset()
@@ -127,6 +130,8 @@ void denoise_patch(const matrix_z patch_share[2], matrix_z denoised_share[2],
 			tanh_polynomials(crt_buf.Gpb.share,  crt_buf.GpbSqr.share, 
 							 crt_buf.T[0].share, crt_buf.T[1].share, 
 							 crt_buf.T[2].share, crt_buf.T[3].share);
+            for(int j=0; j<4; ++j)
+                secure_rescale(crt_buf.T[j].share[0], crt_buf.T[j].share[1]);
 
 			// simulate the computation undertaken by GC
 			gc_simulate(crt_buf.Gpb,
@@ -177,8 +182,8 @@ void denoise_image(const matrix_d &img, matrix_d &denoised)
             out_patch_scaled.decrypt();
 
             // recover negative values
-            mod_2exp(out_patch_scaled.plain, CONFIG_L);
-            matrix_neg_recover(out_patch_scaled.plain);
+            //mod_2exp(out_patch_scaled.plain, CONFIG_L);
+            //matrix_neg_recover(out_patch_scaled.plain);
             
             // scale down and deflatten
             matrix_deflatten<matrix_d>(matrix_z2d(out_patch_scaled.plain, out_flatten_buffer)/CONFIG_SCALING, 
@@ -250,6 +255,7 @@ void denoise_worker(int id, int nrow, int ncol, int *next_row, int *next_col,
         }
 
         matrix_flatten<matrix_z>((in_patch*CONFIG_SCALING).cast<mpz_class>(), in_patch_scaled.plain, flat_row);
+        mod_2exp(in_patch_scaled.plain, CONFIG_L); // convert to ring element
         in_patch_scaled.plain(PATCH_IN_SIZE) = MPZ_SCALED_ONE; // pad the last element
 
         in_patch_scaled.encrypt();
@@ -347,6 +353,9 @@ void secure_muliplication(const matrix_z shareA[2], const matrix_z shareB[2],
 		}
 		shareAB[i] += shareTri[i].Z;
 	}
+
+    mod_2exp(shareAB[0], CONFIG_L);
+    mod_2exp(shareAB[1], CONFIG_L);
 }
 
 void gc_simulate(ss_tuple_z &X, 
@@ -354,11 +363,12 @@ void gc_simulate(ss_tuple_z &X,
 				 ss_tuple_z &O)
 {
 	X.decrypt();
-	for(int i=0; i<4; ++i)
-		T[i].decrypt();
+    for (int i = 0; i < 4; ++i) {
+        T[i].decrypt();
+    }
 	
-	// for comparison			
-	mod_2exp(X.plain, CONFIG_L);
+	//// for comparison			
+	//mod_2exp(X.plain, CONFIG_L);
 
 	for(int i=0, size=X.plain.size(); i<size; ++i) {
 		mpz_class &x = X.plain(i);
@@ -373,8 +383,9 @@ void gc_simulate(ss_tuple_z &X,
 				O.plain(i) = T[1].plain(i);
 			}
 			// b < x
-			else
-				O.plain(i) = MPZ_SCALED_ONE;
+            else {
+                O.plain(i) = MPZ_SCALED_ONE;
+            }
 		}
 		/* x < 0 */
 		else {
@@ -387,8 +398,9 @@ void gc_simulate(ss_tuple_z &X,
 				O.plain(i) = T[3].plain(i);
 			}
 			// x < -b
-			else
-				O.plain(i) = MPZ_SCALED_NEG_ONE;
+            else {
+                O.plain(i) = MPZ_SCALED_NEG_ONE;
+            }
 		}
 	}
 
@@ -400,38 +412,37 @@ void gc_simulate(ss_tuple_z &X,
 }
 
 void tanh_polynomials(const matrix_z shareX[2], const matrix_z shareXsqr[2],
-					  // must be zeroized
 					  matrix_z shareT1[2], matrix_z shareT2[2], 
 					  matrix_z shareT3[2], matrix_z shareT4[2])
 {
-	for(int i=0; i<2; ++i) {
+	for(int i=0; i<2; ++i) {        
 		// T1
-		shareT1[i] += shareXsqr[i]*TANH_PARAM.n1;
+		shareT1[i] = shareXsqr[i]*TANH_PARAM.n1;
 		shareT1[i] += shareX[i]*TANH_PARAM.c1;
 		if(i==1)
 			shareT1[i].array() += TANH_PARAM.d1_i;
-		shareT1[i] /= MOD_S;
+        mod_2exp(shareT1[i], CONFIG_L);
 
 		// T2
-		shareT2[i] += shareXsqr[i]*TANH_PARAM.n2;
+		shareT2[i] = shareXsqr[i]*TANH_PARAM.n2;
 		shareT2[i] += shareX[i]*TANH_PARAM.c2;
 		if(i==1)
 			shareT2[i].array() += TANH_PARAM.d2_i;
-		shareT2[i] /= MOD_S;
+        mod_2exp(shareT2[i], CONFIG_L);
 
 		// T3
-		shareT3[i] -= shareXsqr[i]*TANH_PARAM.n1;
+		shareT3[i] = -shareXsqr[i]*TANH_PARAM.n1;
 		shareT3[i] += shareX[i]*TANH_PARAM.c1;
 		if(i==1)
 			shareT3[i].array() -= TANH_PARAM.d1_i;
-		shareT3[i] /= MOD_S;
+        mod_2exp(shareT3[i], CONFIG_L);
 
 		// T4
-		shareT4[i] -= shareXsqr[i]*TANH_PARAM.n2;
+		shareT4[i] = -shareXsqr[i]*TANH_PARAM.n2;
 		shareT4[i] += shareX[i]*TANH_PARAM.c2;
 		if(i==1)
 			shareT4[i].array() -= TANH_PARAM.d2_i;
-		shareT4[i] /= MOD_S;
+        mod_2exp(shareT4[i], CONFIG_L);
 	}
 }
 
@@ -439,19 +450,25 @@ void secure_rescale(mpz_class &v0, mpz_class &v1)
 {
 	mpz_class rescale_r;
 
+    mod_2exp(v0, CONFIG_L);
+    mod_2exp(v1, CONFIG_L);
+
 	// 1)
 	rescale_r = gmp_prn.get_z_bits(CONFIG_L+CONFIG_K);
 	v0 += rescale_r;
 
 	// 2)
 	v1 += v0;
-	v1 /= MOD_S;
+	v1 /= CONFIG_SCALING;
 	mod_2exp(v1, CONFIG_L_S);
 
 	// 3)
-	v0 = rescale_r / MOD_S;
+	v0 = rescale_r / CONFIG_SCALING;
 	mod_2exp(v0, CONFIG_L_S);
 	v0 = -v0;
+
+    mod_2exp(v0, CONFIG_L);
+    mod_2exp(v1, CONFIG_L);
 }
 
 void secure_rescale(matrix_z &v0, matrix_z &v1)

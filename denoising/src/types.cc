@@ -16,7 +16,7 @@ triplet::triplet(int X_row, int X_col, int Y_col)
 	matrix_rand_2exp(X, CONFIG_L);
 	matrix_rand_2exp(Y, CONFIG_L);
 	Z = X*Y;
-    mod_2exp(Z, CONFIG_L);
+    //mod_2exp(Z, CONFIG_L);
 }
 
 triplet::triplet(int n)
@@ -28,7 +28,7 @@ triplet::triplet(int n)
 	matrix_rand_2exp(X, CONFIG_L);
 	matrix_rand_2exp(X, CONFIG_L);
 	Z = X.array()*Y.array();
-    mod_2exp(Z, CONFIG_L);
+    //mod_2exp(Z, CONFIG_L);
 }
 
 ss_tuple::ss_tuple(int nrow, int ncol)

@@ -90,4 +90,4 @@ void mod_double(matrix_d & mat, int n)
     }
 }
 
-std::ofstream den_log("log.txt");
+//std::ofstream den_log("log.txt");
