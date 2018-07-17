@@ -156,10 +156,10 @@ void denoise_image(const matrix_d &img, matrix_d &denoised)
     matrix_d pixel_weight_image(denoised.rows(), denoised.cols());
 
     double m = 0;
-    //for (int i = 0; i <= (img.rows() - PATCH_IN_W); i += STRIDE_SIZE) {
-    //    for (int j = 0; j <= (img.cols() - PATCH_IN_H); j += STRIDE_SIZE) {
-    int indice[][3] = { {0,0}, {3, 252}, {144, 78} };
-    for (int k = 0; k < 3; ++k) {
+    for (int i = 0; i <= (img.rows() - PATCH_IN_W); i += STRIDE_SIZE) {
+        for (int j = 0; j <= (img.cols() - PATCH_IN_H); j += STRIDE_SIZE) {
+    //int indice[][3] = { {0,0}, {3, 252}, {144, 78} };
+    //for (int k = 0; k < 3; ++k) {
             int i = indice[k][0];
             int j = indice[k][1];
             std::cout << "patch at " << i+1 << ", " << j+1 << std::endl;
@@ -199,7 +199,7 @@ void denoise_image(const matrix_d &img, matrix_d &denoised)
 
             denoised.block<PATCH_OUT_H, PATCH_OUT_W>(i, j) += out_patch;
             pixel_weight_image.block<PATCH_OUT_H, PATCH_OUT_H>(i, j) += pixel_weight; // this could be preprocessed
-//        }
+        }
     }
     exit(0);
 
